@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestion de Productos e Inventario | Sistemas Distribuidos</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+    crossorigin="anonymous"
+  >
+  <style>
+    :root {
+      --surface-bg: #f4f6f9;
+      --border-subtle: #dee2e6;
+      --error-color: #c62828;
+      --error-bg: #fce8e6;
+      --valid-color: #1b5e20;
+    }
+
+    body {
+      background-color: var(--surface-bg);
+    }
+
+    /* Validation styles after user interaction (:user-invalid with fallback class) */
+    .field-hint {
+      display: block;
+      color: #5f6368;
+      font-size: 0.825rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .error-msg {
+      display: none;
+      color: var(--error-color);
+      font-size: 0.85rem;
+      margin-top: 0.25rem;
+    }
+
+    :is(input, select, textarea):is(:user-invalid, .user-invalid-fallback) {
+      border-color: var(--error-color);
+      background-color: var(--error-bg);
+    }
+
+    :is(input, select, textarea):is(:user-invalid, .user-invalid-fallback) + .error-msg {
+      display: block;
+    }
+
+    :is(input, select, textarea):is(:user-valid, .user-valid-fallback) {
+      border-color: var(--valid-color);
+    }
+
+    /* Responsive semantic table with sticky headers and container query card stacking */
+    .table-wrapper {
+      overflow: auto;
+      max-inline-size: 100%;
+      max-block-size: min(520px, 70vh);
+      container-type: inline-size;
+      border: 1px solid var(--border-subtle);
+      border-radius: 0.5rem;
+      background-color: #fff;
+    }
+
+    .inventory-table {
+      width: 100%;
+      margin-bottom: 0;
+      border-collapse: separate;
+      border-spacing: 0;
+      --label-2: "Categoria";
+      --label-3: "Precio";
+      --label-4: "Stock";
+      --label-5: "Descripcion";
+      --label-6: "Acciones";
+    }
+
+    .inventory-table caption {
+      caption-side: top;
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      color: #212529;
+      background-color: #f8f9fa;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .inventory-table thead {
+      position: sticky;
+      inset-block-start: 0;
+      z-index: 2;
+      background-color: #212529;
+      color: #fff;
+    }
+
+    .inventory-table thead th {
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      white-space: nowrap;
+      border-bottom: 1px solid #343a40;
+    }
+
+    .inventory-table tbody th,
+    .inventory-table tbody td {
+      padding: 0.75rem 1rem;
+      vertical-align: middle;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .inventory-table tbody th {
+      position: sticky;
+      inset-inline-start: 0;
+      z-index: 1;
+      background-color: #fff;
+      font-weight: 600;
+    }
+
+    .inventory-table tbody tr:hover th,
+    .inventory-table tbody tr:hover td {
+      background-color: #f8f9fa;
+    }
+
+    @container (width < 600px) {
+      .inventory-table,
+      .inventory-table thead,
+      .inventory-table tbody,
+      .inventory-table tr,
+      .inventory-table th,
+      .inventory-table td {
+        display: block;
+      }
+
+      .inventory-table thead {
+        display: none;
+      }
+
+      .inventory-table tr {
+        margin: 0.75rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: 0.5rem;
+        overflow: hidden;
+      }
+
+      .inventory-table tbody th {
+        position: sticky;
+        inset-block-start: 0;
+        z-index: 2;
+        background-color: #e9ecef;
+      }
+
+      .inventory-table tbody td:nth-child(2)::before {
+        content: var(--label-2) ": ";
+        font-weight: 600;
+      }
+
+      .inventory-table tbody td:nth-child(3)::before {
+        content: var(--label-3) ": ";
+        font-weight: 600;
+      }
+
+      .inventory-table tbody td:nth-child(4)::before {
+        content: var(--label-4) ": ";
+        font-weight: 600;
+      }
+
+      .inventory-table tbody td:nth-child(5)::before {
+        content: var(--label-5) ": ";
+        font-weight: 600;
+      }
+
+      .inventory-table tbody td:nth-child(6)::before {
+        content: var(--label-6) ": ";
+        font-weight: 600;
+      }
+    }
+
+    /* Native modal dialog styles and backdrop scroll containment */
+    dialog.app-dialog {
+      border: 0;
+      border-radius: 0.75rem;
+      padding: 0;
+      width: min(92vw, 520px);
+      box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.25);
+    }
+
+    dialog.app-dialog:modal {
+      overscroll-behavior: contain;
+    }
+
+    dialog.app-dialog::backdrop {
+      background-color: rgba(15, 23, 42, 0.55);
+      overflow: hidden;
+      overscroll-behavior: contain;
+    }
+
+    .dialog-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .dialog-title {
+      font-size: 1.2rem;
+      margin: 0;
+    }
+
+    .dialog-body {
+      padding: 1.25rem;
+    }
+
+    .dialog-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      padding: 0.9rem 1.25rem;
+      border-top: 1px solid var(--border-subtle);
+      background-color: #f8f9fa;
+    }
+
+    .visually-hidden:where(:not(:focus-within, :active)) {
+      position: absolute !important;
+      clip-path: inset(50%) !important;
+      overflow: hidden !important;
+      width: 1px !important;
+      height: 1px !important;
+      margin: -1px !important;
+      padding: 0 !important;
+      border: 0 !important;
+      white-space: nowrap !important;
+    }
+  </style>
+</head>
+<body>
+  <header class="bg-dark text-white py-3 shadow-sm">
+    <div class="container d-flex flex-wrap justify-content-between align-items-center gap-3">
+      <div>
+        <h1 class="h4 mb-1">Gestion de Productos e Inventario</h1>
+        <p class="mb-0 text-secondary small">
+          Arquitectura Cloud-Native: Node.js + PostgreSQL StatefulSet + HPA por Memoria
+        </p>
+      </div>
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <span class="badge text-bg-primary" id="pod-badge">Pod: cargando...</span>
+        <span class="badge text-bg-secondary" id="db-badge">DB: verificando...</span>
+        <span class="badge text-bg-info text-dark" id="memory-badge">RAM RSS: -- MB</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container my-4">
+    <div id="status-alert" class="alert d-none" role="status" aria-live="polite"></div>
+
+    <div class="row g-4">
+      <!-- Create Form -->
+      <section class="col-12 col-lg-4" aria-labelledby="create-heading">
+        <div class="card shadow-sm">
+          <div class="card-header bg-white fw-semibold">
+            <h2 id="create-heading" class="h6 mb-0">Registrar Nuevo Producto</h2>
+          </div>
+          <div class="card-body">
+            <form id="create-form" novalidate>
+              <div class="mb-3">
+                <label for="create-name" class="form-label fw-medium">Nombre del producto</label>
+                <span id="create-name-hint" class="field-hint">Minimo 2 caracteres (ej. Laptop ThinkPad)</span>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="create-name"
+                  name="name"
+                  required
+                  minlength="2"
+                  maxlength="120"
+                  aria-describedby="create-name-hint"
+                  data-error="create-name-error"
+                >
+                <div id="create-name-error" class="error-msg">
+                  <span role="img" aria-label="Error">!</span> Ingresa un nombre valido de al menos 2 caracteres.
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="create-category" class="form-label fw-medium">Categoria</label>
+                <span id="create-category-hint" class="field-hint">Ejemplo: Electronica, Redes, Almacenamiento</span>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="create-category"
+                  name="category"
+                  required
+                  minlength="2"
+                  maxlength="80"
+                  aria-describedby="create-category-hint"
+                  data-error="create-category-error"
+                >
+                <div id="create-category-error" class="error-msg">
+                  <span role="img" aria-label="Error">!</span> Ingresa una categoria de al menos 2 caracteres.
+                </div>
+              </div>
+
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <label for="create-price" class="form-label fw-medium">Precio (USD)</label>
+                  <span id="create-price-hint" class="field-hint">Numero >= 0</span>
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="create-price"
+                    name="price"
+                    required
+                    min="0"
+                    step="0.01"
+                    aria-describedby="create-price-hint"
+                    data-error="create-price-error"
+                  >
+                  <div id="create-price-error" class="error-msg">
+                    <span role="img" aria-label="Error">!</span> Ingresa un precio mayor o igual a 0.
+                  </div>
+                </div>
+
+                <div class="col-6">
+                  <label for="create-stock" class="form-label fw-medium">Stock</label>
+                  <span id="create-stock-hint" class="field-hint">Entero >= 0</span>
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="create-stock"
+                    name="stock"
+                    required
+                    min="0"
+                    step="1"
+                    aria-describedby="create-stock-hint"
+                    data-error="create-stock-error"
+                  >
+                  <div id="create-stock-error" class="error-msg">
+                    <span role="img" aria-label="Error">!</span> Ingresa un stock entero mayor o igual a 0.
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="create-description" class="form-label fw-medium">Descripcion</label>
+                <span id="create-description-hint" class="field-hint">Opcional: especificaciones breves</span>
+                <textarea
+                  class="form-control"
+                  id="create-description"
+                  name="description"
+                  rows="2"
+                  maxlength="500"
+                  aria-describedby="create-description-hint"
+                ></textarea>
+              </div>
+
+              <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary" id="create-submit-btn">
+                  Guardar Producto
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- Products Table -->
+      <section class="col-12 col-lg-8" aria-labelledby="inventory-heading">
+        <div class="card shadow-sm">
+          <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <h2 id="inventory-heading" class="h6 mb-0">Inventario en Tiempo Real</h2>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="refresh-btn">
+                Actualizar Lista
+              </button>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div tabindex="0" role="region" aria-labelledby="products-table-caption" class="table-wrapper">
+              <table class="inventory-table">
+                <caption id="products-table-caption">
+                  Listado de productos persistidos en PostgreSQL (<span id="product-count">0</span> registros)
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Producto</th>
+                    <th scope="col">Categoria</th>
+                    <th scope="col">Precio</th>
+                    <th scope="col">Stock</th>
+                    <th scope="col">Descripcion</th>
+                    <th scope="col">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="products-tbody">
+                  <tr>
+                    <td colspan="6" class="text-center text-muted py-4">Cargando productos...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Native Modal Dialog: Edit Product -->
+  <dialog id="edit-dialog" class="app-dialog" closedby="any" aria-labelledby="edit-dialog-title">
+    <div class="dialog-header">
+      <h1 id="edit-dialog-title" class="dialog-title">Editar Producto</h1>
+      <button type="button" class="btn-close" id="edit-close-x" aria-label="Cerrar ventana de edicion"></button>
+    </div>
+    <form id="edit-form" novalidate>
+      <div class="dialog-body">
+        <input type="hidden" id="edit-id" name="id">
+
+        <div class="mb-3">
+          <label for="edit-name" class="form-label fw-medium">Nombre del producto</label>
+          <span id="edit-name-hint" class="field-hint">Minimo 2 caracteres</span>
+          <input
+            type="text"
+            class="form-control"
+            id="edit-name"
+            name="name"
+            required
+            minlength="2"
+            maxlength="120"
+            autofocus
+            aria-describedby="edit-name-hint"
+            data-error="edit-name-error"
+          >
+          <div id="edit-name-error" class="error-msg">
+            <span role="img" aria-label="Error">!</span> Ingresa un nombre valido de al menos 2 caracteres.
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="edit-category" class="form-label fw-medium">Categoria</label>
+          <span id="edit-category-hint" class="field-hint">Minimo 2 caracteres</span>
+          <input
+            type="text"
+            class="form-control"
+            id="edit-category"
+            name="category"
+            required
+            minlength="2"
+            maxlength="80"
+            aria-describedby="edit-category-hint"
+            data-error="edit-category-error"
+          >
+          <div id="edit-category-error" class="error-msg">
+            <span role="img" aria-label="Error">!</span> Ingresa una categoria de al menos 2 caracteres.
+          </div>
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label for="edit-price" class="form-label fw-medium">Precio (USD)</label>
+            <input
+              type="number"
+              class="form-control"
+              id="edit-price"
+              name="price"
+              required
+              min="0"
+              step="0.01"
+              data-error="edit-price-error"
+            >
+            <div id="edit-price-error" class="error-msg">
+              <span role="img" aria-label="Error">!</span> Precio invalido.
+            </div>
+          </div>
+
+          <div class="col-6">
+            <label for="edit-stock" class="form-label fw-medium">Stock</label>
+            <input
+              type="number"
+              class="form-control"
+              id="edit-stock"
+              name="stock"
+              required
+              min="0"
+              step="1"
+              data-error="edit-stock-error"
+            >
+            <div id="edit-stock-error" class="error-msg">
+              <span role="img" aria-label="Error">!</span> Stock invalido.
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-2">
+          <label for="edit-description" class="form-label fw-medium">Descripcion</label>
+          <textarea
+            class="form-control"
+            id="edit-description"
+            name="description"
+            rows="2"
+            maxlength="500"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="dialog-footer">
+        <button type="button" class="btn btn-outline-secondary" id="edit-cancel-btn">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="edit-save-btn">Guardar Cambios</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Native Modal Dialog: Confirm Delete -->
+  <dialog id="delete-dialog" class="app-dialog" closedby="any" aria-labelledby="delete-dialog-title">
+    <div class="dialog-header">
+      <h1 id="delete-dialog-title" class="dialog-title">Confirmar Eliminacion</h1>
+    </div>
+    <div class="dialog-body">
+      <p class="mb-0" id="delete-dialog-message">
+        Esta accion eliminara permanentemente el producto seleccionado.
+      </p>
+    </div>
+    <form method="dialog" class="dialog-footer">
+      <button type="submit" value="cancel" class="btn btn-outline-secondary" autofocus>
+        Cancelar
+      </button>
+      <button type="submit" value="confirm" class="btn btn-danger">
+        Eliminar Producto
+      </button>
+    </form>
+  </dialog>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

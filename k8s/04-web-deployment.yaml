@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-crud-web
+  labels:
+    app: node-crud-web
+    component: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: node-crud-web
+  template:
+    metadata:
+      labels:
+        app: node-crud-web
+        component: web
+    spec:
+      containers:
+        - name: node-crud-app
+          image: node-crud-app:latest
+          # Uses the image built inside Minikube's Docker daemon without querying Docker Hub
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "3000"
+            - name: DB_HOST
+              value: "postgres-headless"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB
+            - name: MAX_STRESS_MB
+              value: "110"
+            - name: MAX_RSS_GUARD_MB
+              value: "185"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
