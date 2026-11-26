@@ -58,7 +58,7 @@ DESPLIEGUE COMPLETADO CON EXITO
 Siguientes pasos para exponer LoadBalancer e Ingress en tu host local:
 
 1. En una terminal dedicada, inicia el tunel de Minikube (requiere sudo):
-   minikube tunnel
+   sudo -v && minikube tunnel
 
 2. Para acceder por dominio mediante Ingress (inventario.local), agrega
    una sola vez una de estas lineas en /etc/hosts:
@@ -68,7 +68,7 @@ Siguientes pasos para exponer LoadBalancer e Ingress en tu host local:
 
 3. Abre en el navegador:
    - Via LoadBalancer: la EXTERNAL-IP de 'kubectl get svc node-crud-service'
-                       (con Docker Desktop suele ser http://127.0.0.1)
+                       (con Docker Desktop suele ser http://127.0.0.1:8080)
    - Via Ingress:      http://inventario.local
 
 4. Ejecuta la prueba de estres de memoria para validar el HPA:

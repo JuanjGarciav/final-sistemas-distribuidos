@@ -13,7 +13,7 @@ usage() {
 Uso: ./scripts/memory_stress.sh [opciones]
 
 Opciones:
-  --url <URL>         URL base de la app (ej. http://127.0.0.1 o http://inventario.local)
+  --url <URL>         URL base de la app (ej. http://127.0.0.1:8080 o http://inventario.local)
   --mb <N>            Megabytes a reservar por peticion (default: 40)
   --ttl <SEGUNDOS>    Tiempo de retencion de memoria en segundos (default: 210)
   --requests <N>      Cantidad total de peticiones a enviar (default: 70)
@@ -65,14 +65,15 @@ done
 if [[ -z "${TARGET_URL}" ]]; then
   if command -v kubectl >/dev/null 2>&1; then
     LB_IP="$(kubectl get svc node-crud-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
+    LB_PORT="$(kubectl get svc node-crud-service -o jsonpath='{.spec.ports[0].port}' 2>/dev/null || true)"
     if [[ -n "${LB_IP}" ]]; then
-      TARGET_URL="http://${LB_IP}"
+      TARGET_URL="http://${LB_IP}:${LB_PORT:-8080}"
     fi
   fi
 fi
 
 if [[ -z "${TARGET_URL}" ]]; then
-  TARGET_URL="http://127.0.0.1"
+  TARGET_URL="http://127.0.0.1:8080"
 fi
 
 TARGET_URL="${TARGET_URL%/}"

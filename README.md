@@ -8,7 +8,7 @@ Solucion completa CRUD de **Gestion de Productos e Inventario** construida con *
 
 ```mermaid
 flowchart LR
-  User["Navegador / Cliente"] --> LB["Service LoadBalancer\nnode-crud-service :80"]
+  User["Navegador / Cliente"] --> LB["Service LoadBalancer\nnode-crud-service :8080"]
   User --> Ing["NGINX Ingress\ninventario.local"]
   Ing --> LB
   LB --> Dep["Deployment: node-crud-web\n(2 a 5 replicas, Node.js :3000)"]
@@ -23,8 +23,8 @@ flowchart LR
 | Componente | Objeto Kubernetes | Configuracion Clave |
 |---|---|---|
 | Backend + UI CRUD | `Deployment` (`node-crud-web`) | 2 replicas iniciales, `requests.memory: 128Mi`, `limits.memory: 256Mi`, probes `/healthz` y `/readyz`, reconexion automatica a PostgreSQL. |
-| Exposicion directa | `Service` (`node-crud-service`) | Tipo `LoadBalancer`, puerto `80` hacia `3000`. |
-| Enrutamiento HTTP | `Ingress` (`node-crud-ingress`) | `ingressClassName: nginx`, host `inventario.local` hacia `node-crud-service:80`. |
+| Exposicion directa | `Service` (`node-crud-service`) | Tipo `LoadBalancer`, puerto `8080` hacia `3000` (separado del puerto `80` que usa el Ingress, para que `minikube tunnel` no choque). |
+| Enrutamiento HTTP | `Ingress` (`node-crud-ingress`) | `ingressClassName: nginx`, host `inventario.local` hacia `node-crud-service:8080`. |
 | Autoescalado | `HorizontalPodAutoscaler` (`node-crud-hpa`) | `autoscaling/v2`, `minReplicas: 2`, `maxReplicas: 5`, metrica `memory` (`averageUtilization: 70`). Sin metrica de CPU. |
 | Base de datos | `StatefulSet` (`postgres`) | 1 replica (`postgres:16-alpine`), `PGDATA=/var/lib/postgresql/data/pgdata`, `volumeClaimTemplates` con StorageClass `standard` (`1Gi`). |
 | Red interna DB | `Service` (`postgres-headless`) | `clusterIP: None`, puerto `5432`. |
@@ -51,7 +51,7 @@ flowchart LR
 │   ├── 03-db-service.yaml      # Headless Service para comunicacion interna
 │   ├── 04-web-configmap.yaml   # ConfigMap con la configuracion no sensible de la app
 │   ├── 05-web-deployment.yaml  # Deployment Node.js (2 replicas, requests/limits)
-│   ├── 06-web-service.yaml     # Service LoadBalancer en puerto 80
+│   ├── 06-web-service.yaml     # Service LoadBalancer en puerto 8080
 │   ├── 07-web-hpa.yaml         # HPA por consumo de memoria al 70% (2 a 5 replicas)
 │   └── 08-ingress.yaml         # Ingress NGINX (inventario.local)
 ├── scripts/
@@ -108,8 +108,9 @@ kubectl apply -f k8s/07-web-hpa.yaml
 kubectl apply -f k8s/08-ingress.yaml
 kubectl rollout status deployment/node-crud-web --timeout=180s
 
-# 5. En otra terminal, iniciar el tunel de Minikube (requiere sudo)
-minikube tunnel
+# 5. En otra terminal, iniciar el tunel de Minikube (requiere sudo para los puertos 80/443 del Ingress).
+#    'sudo -v' pide la contrasena una sola vez antes de que el tunel la necesite.
+sudo -v && minikube tunnel
 ```
 
 ### Configuracion del dominio local para Ingress
@@ -126,7 +127,7 @@ echo "$(minikube ip) inventario.local" | sudo tee -a /etc/hosts
 ```
 
 Acceso a la aplicacion web:
-- **Via LoadBalancer:** la `EXTERNAL-IP` mostrada en `kubectl get svc node-crud-service` (con Docker Desktop suele ser `127.0.0.1`)
+- **Via LoadBalancer:** la `EXTERNAL-IP` mostrada en `kubectl get svc node-crud-service` (con Docker Desktop: `http://127.0.0.1:8080`)
 - **Via Ingress:** `http://inventario.local`
 
 ---
@@ -143,7 +144,7 @@ kubectl describe hpa node-crud-hpa
 
 ### 2. Prueba de Persistencia de Datos (StatefulSet + PVC)
 
-1. Abre `http://inventario.local` (o `http://127.0.0.1`) y crea 2 o 3 productos desde el formulario.
+1. Abre `http://inventario.local` (o `http://127.0.0.1:8080`) y crea 2 o 3 productos desde el formulario.
 2. Verifica el Pod y el PVC de PostgreSQL:
    ```bash
    kubectl get pods -l app=postgres
