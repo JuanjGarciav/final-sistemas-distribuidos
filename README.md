@@ -114,14 +114,19 @@ minikube tunnel
 
 ### Configuracion del dominio local para Ingress
 
-Agrega una sola vez la resolucion local en `/etc/hosts`:
+Agrega una sola vez la resolucion local en `/etc/hosts`. La IP depende de como corre Docker en tu maquina (revisalo con `docker info --format '{{.OperatingSystem}}'`):
 
 ```bash
+# Docker Desktop (Linux, macOS o Windows): minikube redirige puertos a localhost.
+# Requiere 'minikube tunnel' corriendo en otra terminal.
 echo "127.0.0.1 inventario.local" | sudo tee -a /etc/hosts
+
+# Docker Engine nativo en Linux: la IP del nodo es accesible directamente.
+echo "$(minikube ip) inventario.local" | sudo tee -a /etc/hosts
 ```
 
 Acceso a la aplicacion web:
-- **Via LoadBalancer:** `http://127.0.0.1` (o la IP mostrada en `kubectl get svc node-crud-service`)
+- **Via LoadBalancer:** la `EXTERNAL-IP` mostrada en `kubectl get svc node-crud-service` (con Docker Desktop suele ser `127.0.0.1`)
 - **Via Ingress:** `http://inventario.local`
 
 ---
