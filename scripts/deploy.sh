@@ -38,16 +38,17 @@ kubectl apply -f "${ROOT_DIR}/k8s/02-db-statefulset.yaml"
 echo "    Esperando a que el StatefulSet de PostgreSQL este listo..."
 kubectl rollout status statefulset/postgres --timeout=180s
 
-kubectl apply -f "${ROOT_DIR}/k8s/04-web-deployment.yaml"
-kubectl apply -f "${ROOT_DIR}/k8s/05-web-service.yaml"
-kubectl apply -f "${ROOT_DIR}/k8s/06-web-hpa.yaml"
-kubectl apply -f "${ROOT_DIR}/k8s/07-ingress.yaml"
+kubectl apply -f "${ROOT_DIR}/k8s/04-web-configmap.yaml"
+kubectl apply -f "${ROOT_DIR}/k8s/05-web-deployment.yaml"
+kubectl apply -f "${ROOT_DIR}/k8s/06-web-service.yaml"
+kubectl apply -f "${ROOT_DIR}/k8s/07-web-hpa.yaml"
+kubectl apply -f "${ROOT_DIR}/k8s/08-ingress.yaml"
 
 echo "    Esperando a que el Deployment de la aplicacion web este listo..."
 kubectl rollout status deployment/node-crud-web --timeout=180s
 
 echo "==> [6/6] Resumen del despliegue:"
-kubectl get pods,svc,statefulset,pvc,hpa,ingress
+kubectl get pods,svc,statefulset,pvc,hpa,ingress,configmap
 
 cat <<'EOF'
 

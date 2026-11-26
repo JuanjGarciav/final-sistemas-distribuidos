@@ -25,13 +25,12 @@ spec:
             - name: http
               containerPort: 3000
               protocol: TCP
+          # Non-sensitive settings (PORT, DB_HOST, DB_PORT, MAX_*) come from the ConfigMap
+          envFrom:
+            - configMapRef:
+                name: node-crud-config
+          # Credentials come from the Secret
           env:
-            - name: PORT
-              value: "3000"
-            - name: DB_HOST
-              value: "postgres-headless"
-            - name: DB_PORT
-              value: "5432"
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
@@ -47,10 +46,6 @@ spec:
                 secretKeyRef:
                   name: postgres-secret
                   key: POSTGRES_DB
-            - name: MAX_STRESS_MB
-              value: "110"
-            - name: MAX_RSS_GUARD_MB
-              value: "185"
           resources:
             requests:
               cpu: "100m"

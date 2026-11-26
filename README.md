@@ -29,6 +29,7 @@ flowchart LR
 | Base de datos | `StatefulSet` (`postgres`) | 1 replica (`postgres:16-alpine`), `PGDATA=/var/lib/postgresql/data/pgdata`, `volumeClaimTemplates` con StorageClass `standard` (`1Gi`). |
 | Red interna DB | `Service` (`postgres-headless`) | `clusterIP: None`, puerto `5432`. |
 | Credenciales | `Secret` (`postgres-secret`) | Inyectado como variables de entorno tanto en PostgreSQL como en Node.js. |
+| Configuracion | `ConfigMap` (`node-crud-config`) | Parametros no sensibles de la app (`PORT`, `DB_HOST`, `DB_PORT`, `MAX_STRESS_MB`, `MAX_RSS_GUARD_MB`) inyectados con `envFrom`. |
 
 ---
 
@@ -48,10 +49,11 @@ flowchart LR
 │   ├── 01-db-secret.yaml       # Credenciales de PostgreSQL
 │   ├── 02-db-statefulset.yaml  # StatefulSet + volumeClaimTemplates (standard)
 │   ├── 03-db-service.yaml      # Headless Service para comunicacion interna
-│   ├── 04-web-deployment.yaml  # Deployment Node.js (2 replicas, requests/limits)
-│   ├── 05-web-service.yaml     # Service LoadBalancer en puerto 80
-│   ├── 06-web-hpa.yaml         # HPA por consumo de memoria al 70% (2 a 5 replicas)
-│   └── 07-ingress.yaml         # Ingress NGINX (inventario.local)
+│   ├── 04-web-configmap.yaml   # ConfigMap con la configuracion no sensible de la app
+│   ├── 05-web-deployment.yaml  # Deployment Node.js (2 replicas, requests/limits)
+│   ├── 06-web-service.yaml     # Service LoadBalancer en puerto 80
+│   ├── 07-web-hpa.yaml         # HPA por consumo de memoria al 70% (2 a 5 replicas)
+│   └── 08-ingress.yaml         # Ingress NGINX (inventario.local)
 ├── scripts/
 │   ├── deploy.sh               # Automatizacion completa de despliegue en Minikube
 │   └── memory_stress.sh        # Script de carga controlada sobre /stress-memory
@@ -99,10 +101,11 @@ kubectl apply -f k8s/03-db-service.yaml
 kubectl apply -f k8s/02-db-statefulset.yaml
 kubectl rollout status statefulset/postgres --timeout=180s
 
-kubectl apply -f k8s/04-web-deployment.yaml
-kubectl apply -f k8s/05-web-service.yaml
-kubectl apply -f k8s/06-web-hpa.yaml
-kubectl apply -f k8s/07-ingress.yaml
+kubectl apply -f k8s/04-web-configmap.yaml
+kubectl apply -f k8s/05-web-deployment.yaml
+kubectl apply -f k8s/06-web-service.yaml
+kubectl apply -f k8s/07-web-hpa.yaml
+kubectl apply -f k8s/08-ingress.yaml
 kubectl rollout status deployment/node-crud-web --timeout=180s
 
 # 5. En otra terminal, iniciar el tunel de Minikube (requiere sudo)
@@ -129,7 +132,7 @@ Acceso a la aplicacion web:
 
 ```bash
 kubectl get statefulset,pvc,pv
-kubectl get deployment,pods,svc,ingress,hpa
+kubectl get deployment,pods,svc,ingress,hpa,configmap,secret
 kubectl describe hpa node-crud-hpa
 ```
 
@@ -188,7 +191,7 @@ Duracion sugerida: **6 a 8 minutos**. Disposicion recomendada de pantalla: naveg
 ### Escena 2 — Inspeccion de Objetos en Kubernetes (0:45 – 2:00)
 - **Comandos a ejecutar en pantalla:**
   ```bash
-  kubectl get all,pvc,ingress
+  kubectl get all,pvc,ingress,configmap,secret
   kubectl describe hpa node-crud-hpa
   ```
 - **Que senalar en pantalla:**

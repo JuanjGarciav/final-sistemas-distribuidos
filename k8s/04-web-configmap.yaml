@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: node-crud-config
+  labels:
+    app: node-crud-web
+    component: config
+# Non-sensitive runtime settings for the web app; credentials live in postgres-secret
+data:
+  PORT: "3000"
+  DB_HOST: "postgres-headless"
+  DB_PORT: "5432"
+  MAX_STRESS_MB: "110"
+  MAX_RSS_GUARD_MB: "185"
