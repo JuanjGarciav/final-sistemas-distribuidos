@@ -176,11 +176,12 @@ kubectl describe hpa node-crud-hpa
    ```bash
    ./scripts/memory_stress.sh --url http://inventario.local
    ```
-4. Observa en la Terminal 1 como el porcentaje de memoria supera `70%` y `REPLICAS` escala automaticamente desde **2** hasta **5** sin sufrir `OOMKilled` (gracias al limite de seguridad interno en `/stress-memory` por debajo de `256Mi`).
-5. Opcionalmente, libera la memoria de inmediato para mostrar el escalado hacia abajo:
+4. Observa en la Terminal 1 como el porcentaje de memoria supera `70%` y `REPLICAS` escala automaticamente desde **2** hasta **5** sin sufrir `OOMKilled` (gracias al limite de seguridad interno en `/stress-memory` por debajo de `256Mi`). En pruebas: `2 -> 3` a los ~70 s y `3 -> 5` a los ~130 s (metrics-server reporta con 30-60 s de retraso).
+5. Opcionalmente, libera la memoria para mostrar el escalado hacia abajo:
    ```bash
    ./scripts/memory_stress.sh --url http://inventario.local --release
    ```
+   La liberacion fuerza el recolector de basura de Node (`--expose-gc`), asi que la memoria vuelve al sistema operativo de inmediato. El HPA baja `5 -> 4 -> 3 -> 2` en unos 2,5 minutos (60 s de estabilizacion y luego 1 Pod cada 30 s).
 
 ---
 
@@ -235,8 +236,9 @@ Duracion sugerida: **6 a 8 minutos**. Disposicion recomendada de pantalla: naveg
 - **Que explicar oralmente:**
   - Explicar que el endpoint `/stress-memory` reserva buffers fisicos en RAM (`Buffer.alloc` inicializado) con tope de seguridad por debajo del limite de `256Mi` para disparar el HPA sin provocar `OOMKilled`.
   - Mostrar en el Panel 3 como las peticiones se reparten entre los distintos Pods y elevan su consumo RSS por encima del umbral del 70% de `128Mi` (~90 MiB).
-  - Senalar en el Panel 1 y Panel 2 como `TARGETS` supera `70%` y Kubernetes crea nuevas replicas automaticamente hasta llegar al maximo configurado de **5 Pods** (`2 -> 4 -> 5`).
+  - Senalar en el Panel 1 y Panel 2 como `TARGETS` supera `70%` y Kubernetes crea nuevas replicas automaticamente hasta llegar al maximo configurado de **5 Pods** (`2 -> 3 -> 5`, en unos 2 minutos).
   - Ejecutar `kubectl top pods -l app=node-crud-web` para evidenciar el consumo real de memoria reportado por `metrics-server`.
+  - (Opcional) Ejecutar `./scripts/memory_stress.sh --url http://inventario.local --release` y mostrar como `TARGETS` cae por debajo del 70% y las replicas vuelven a **2** en unos 2,5 minutos.
 
 ### Escena 6 — Cierre y Resumen (7:15 – 7:45)
 - **Que mostrar en pantalla:** Estado final del cluster (`kubectl get pods,hpa,pvc`) y la interfaz web operativa.

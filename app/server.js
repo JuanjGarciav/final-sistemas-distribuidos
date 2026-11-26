@@ -160,14 +160,27 @@ function parsePositiveId(rawId) {
   return id;
 }
 
+// V8 does not collect large, unreferenced buffers without allocation pressure, so the pod keeps
+// its RSS and the memory-based HPA never scales down. A forced full GC returns that memory to the OS.
+// Requires starting Node with --expose-gc; otherwise it is a no-op.
+function collectGarbage() {
+  if (typeof global.gc === 'function') {
+    global.gc();
+  }
+}
+
 function releaseAllStressBuffers() {
   let releasedMB = 0;
   while (stressAllocations.length > 0) {
     const item = stressAllocations.pop();
     clearTimeout(item.timer);
+    item.buffer = null;
     releasedMB += item.mb;
   }
   totalAllocatedStressMB = 0;
+  if (releasedMB > 0) {
+    collectGarbage();
+  }
   return releasedMB;
 }
 
@@ -265,6 +278,9 @@ app.get('/stress-memory', (req, res) => {
         stressAllocations.splice(idx, 1);
         totalAllocatedStressMB = Math.max(0, totalAllocatedStressMB - entry.mb);
       }
+      // Drop the closure's reference so the buffer is collectable during this callback
+      entry.buffer = null;
+      collectGarbage();
     }, ttlSeconds * 1000);
 
     stressAllocations.push(entry);

@@ -17,4 +17,5 @@ USER node
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+# --expose-gc lets /stress-memory force a GC on release so the memory HPA can scale down
+CMD ["node", "--expose-gc", "server.js"]
